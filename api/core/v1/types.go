@@ -19,7 +19,7 @@ type Pod struct {
 	Namespace         string     `json:"namespace"`
 	Image             string     `json:"image"`
 	NodeName          string     `json:"nodeName,omitempty"`
-	Phase             PodStatus  `json:"phase"`
+	Status            PodStatus  `json:"phase"`
 	DeletionTimestamp *time.Time `json:"deleteTime,omitempty"`
 }
 
