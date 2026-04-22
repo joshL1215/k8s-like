@@ -70,16 +70,6 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteErr(w, http.StatusBadRequest, "A node name must be provided", nil)
 		return
 	}
-
-	if _, err := h.store.GetNode(node.Name); err != nil {
-		if errors.Is(err, store.ErrNodeNotExist) {
-			httpx.WriteErr(w, http.StatusNotFound, "Node does not exist", err)
-		} else {
-			httpx.WriteErr(w, http.StatusInternalServerError, "Failed to find node", err)
-		}
-		return
-	}
-
 	if err := h.store.UpdateNode(&node); err != nil {
 		log.Printf("Failed to update node: %v", err)
 		httpx.WriteErr(w, http.StatusInternalServerError, "Failed to update node", err)
