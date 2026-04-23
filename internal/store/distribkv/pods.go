@@ -74,3 +74,38 @@ func (s *DistributedKVStore) UpdatePod(ctx context.Context, pod *corev1.Pod) err
 	}
 	return nil
 }
+
+func (s *DistributedKVStore) DeletePod(ctx context.Context, namespace, name string) error {
+	cli, podKey := s.etcd, buildPodKey(namespace, name)
+
+	resp, err := cli.Txn(ctx).
+		If(clientv3.Compare(clientv3.CreateRevision(podKey), "!=", 0)).
+		Then(clientv3.OpDelete(podKey)).Commit()
+	if err != nil {
+		return fmt.Errorf("etcd transaction: %w", err)
+	}
+	if !resp.Succeeded {
+		return store.ErrPodNotExist
+	}
+	return nil
+}
+
+func (s *DistributedKVStore) ListPods(ctx context.Context, namespace string) ([]*corev1.Pod, error) {
+	cli := s.etcd
+	keyPrefix := podPrefix + namespace + "/"
+
+	resp, err := cli.Get(ctx, keyPrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, fmt.Errorf("pod list: %w", err)
+	}
+
+	pods := make([]*corev1.Pod, 0, len(resp.Kvs))
+	for _, kv := range resp.Kvs {
+		pod := &corev1.Pod{}
+		if err := json.Unmarshal(kv.Value, pod); err != nil {
+			return nil, fmt.Errorf("unmarshal pod: %w", err)
+		}
+		pods = append(pods, pod)
+	}
+	return pods, nil
+}
