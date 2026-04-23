@@ -20,7 +20,7 @@ func (s *DistributedKVStore) CreateNode(ctx context.Context, node *corev1.Node) 
 	cli, nodeKey := s.etcd, buildNodeKey(node.Name)
 	nodeVal, err := json.Marshal(node)
 	if err != nil {
-		return fmt.Errorf("failed node marshal: %w", err)
+		return fmt.Errorf("node marshal: %w", err)
 	}
 
 	// Txn (etcd transaction) ensures atomicity in if-then
@@ -28,7 +28,7 @@ func (s *DistributedKVStore) CreateNode(ctx context.Context, node *corev1.Node) 
 		If(clientv3.Compare(clientv3.CreateRevision(nodeKey), "=", 0)).
 		Then(clientv3.OpPut(nodeKey, string(nodeVal))).Commit()
 	if err != nil {
-		return fmt.Errorf("failed etcd transaction: %w", err)
+		return fmt.Errorf("etcd transaction: %w", err)
 	}
 	if !resp.Succeeded {
 		return store.ErrNodeExists
