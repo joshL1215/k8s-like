@@ -8,7 +8,7 @@ import (
 )
 
 type DistributedKVStore struct {
-	client     *clientv3.Client
+	etcd       *clientv3.Client
 	podPrefix  string
 	nodePrefix string
 }
@@ -23,7 +23,14 @@ func CreateDistributedKVStore() *DistributedKVStore {
 		log.Fatalf("Failed to connect: %v", err)
 	}
 
-	defer cli.Close()
 	log.Print("Successfully connected to etcd.")
-	return &DistributedKVStore{}
+	return &DistributedKVStore{
+		etcd:       cli,
+		podPrefix:  "/pods/",
+		nodePrefix: "/nodes/",
+	}
+}
+
+func (s *DistributedKVStore) Close() error {
+	return s.etcd.Close()
 }
