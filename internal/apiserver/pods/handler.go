@@ -29,6 +29,9 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteErr(w, http.StatusBadRequest, "A pod name must be provided", nil)
 		return
 	}
+	if pod.Namespace == "" {
+		pod.Namespace = "default"
+	}
 	if pod.Status == "" {
 		pod.Status = corev1.PodPending
 	}

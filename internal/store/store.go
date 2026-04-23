@@ -6,12 +6,12 @@ import (
 	corev1 "github.com/joshL1215/k8s-like/api/core/v1"
 )
 
+var ErrNodeExists = errors.New("node already exists")
+var ErrNodeNotExist = errors.New("node of this name does not exist")
+
 var ErrPodExists = errors.New("pod already exists")
 var ErrPodNotExist = errors.New("pod of this name does not exist")
 var ErrPodIsDeleting = errors.New("pod is already being deleted")
-
-var ErrNodeExists = errors.New("node already exists")
-var ErrNodeNotExist = errors.New("node of this name does not exist")
 
 // Defines an agnostic store interface
 type StoreInterface interface {

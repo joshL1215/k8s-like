@@ -8,9 +8,7 @@ import (
 )
 
 type DistributedKVStore struct {
-	etcd       *clientv3.Client
-	podPrefix  string
-	nodePrefix string
+	etcd *clientv3.Client
 }
 
 func CreateDistributedKVStore() *DistributedKVStore {
@@ -25,9 +23,7 @@ func CreateDistributedKVStore() *DistributedKVStore {
 
 	log.Print("Successfully connected to etcd.")
 	return &DistributedKVStore{
-		etcd:       cli,
-		podPrefix:  "/pods/",
-		nodePrefix: "/nodes/",
+		etcd: cli,
 	}
 }
 
