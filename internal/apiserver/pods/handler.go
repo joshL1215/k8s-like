@@ -20,6 +20,8 @@ func NewHandler(s store.StoreInterface) *Handler {
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	var pod corev1.Pod
 	if err := json.NewDecoder(r.Body).Decode(&pod); err != nil {
 		httpx.WriteErr(w, http.StatusBadRequest, "Invalid request body", err)
@@ -35,8 +37,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	if pod.Status == "" {
 		pod.Status = corev1.PodPending
 	}
-
-	if err := h.store.CreatePod(&pod); err != nil {
+	if err := h.store.CreatePod(ctx, &pod); err != nil {
 		log.Printf("Error creating pod %s: %v", pod.Name, err)
 		if errors.Is(err, store.ErrPodExists) {
 			httpx.WriteErr(w, http.StatusConflict, "Failed to create pod", err)
@@ -50,9 +51,11 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	namespace := r.PathValue("namespace")
 	name := r.PathValue("name")
-	pod, err := h.store.GetPod(namespace, name)
+	pod, err := h.store.GetPod(ctx, namespace, name)
 	if err != nil {
 		if errors.Is(err, store.ErrPodNotExist) {
 			httpx.WriteErr(w, http.StatusNotFound, "Pod not found", err)
@@ -65,6 +68,8 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	var pod corev1.Pod
 	if err := json.NewDecoder(r.Body).Decode(&pod); err != nil {
 		httpx.WriteErr(w, http.StatusBadRequest, "Invalid request body", err)
@@ -78,8 +83,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteErr(w, http.StatusBadRequest, "A pod name must be provided", nil)
 		return
 	}
-
-	if _, err := h.store.GetPod(pod.Namespace, pod.Name); err != nil {
+	if _, err := h.store.GetPod(ctx, pod.Namespace, pod.Name); err != nil {
 		if errors.Is(err, store.ErrPodNotExist) {
 			httpx.WriteErr(w, http.StatusNotFound, "Pod does not exist", err)
 		} else {
@@ -87,8 +91,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	if err := h.store.UpdatePod(&pod); err != nil {
+	if err := h.store.UpdatePod(ctx, &pod); err != nil {
 		log.Printf("Failed to update pod: %v", err)
 		httpx.WriteErr(w, http.StatusInternalServerError, "Failed to update pod", err)
 		return
@@ -97,9 +100,11 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	namespace := r.PathValue("namespace")
 	name := r.PathValue("name")
-	if err := h.store.DeletePod(namespace, name); err != nil {
+	if err := h.store.DeletePod(ctx, namespace, name); err != nil {
 		log.Printf("Error deleting pod %s: %v", name, err)
 		if errors.Is(err, store.ErrPodNotExist) {
 			httpx.WriteErr(w, http.StatusNotFound, "Pod not found for deletion", err)
@@ -113,8 +118,10 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	namespace := r.PathValue("namespace")
-	nodes, err := h.store.ListPods(namespace)
+	nodes, err := h.store.ListPods(ctx, namespace)
 	if err != nil {
 		httpx.WriteErr(w, http.StatusInternalServerError, "Unable to list pods in namespace "+namespace, err)
 		return

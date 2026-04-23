@@ -20,6 +20,8 @@ func NewHandler(s store.StoreInterface) *Handler {
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	var node corev1.Node
 	if err := json.NewDecoder(r.Body).Decode(&node); err != nil {
 		httpx.WriteErr(w, http.StatusBadRequest, "Invalid request body", err)
@@ -32,8 +34,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	if node.Status == "" {
 		node.Status = corev1.NodeReady
 	}
-
-	if err := h.store.CreateNode(&node); err != nil {
+	if err := h.store.CreateNode(ctx, &node); err != nil {
 		log.Printf("Error creating node %s: %v", node.Name, err)
 		if errors.Is(err, store.ErrNodeExists) {
 			httpx.WriteErr(w, http.StatusConflict, "Failed to create node", err)
@@ -47,8 +48,10 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	name := r.PathValue("name")
-	node, err := h.store.GetNode(name)
+	node, err := h.store.GetNode(ctx, name)
 	if err != nil {
 		if errors.Is(err, store.ErrNodeNotExist) {
 			httpx.WriteErr(w, http.StatusNotFound, "Node not found", err)
@@ -61,6 +64,8 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	var node corev1.Node
 	if err := json.NewDecoder(r.Body).Decode(&node); err != nil {
 		httpx.WriteErr(w, http.StatusBadRequest, "Invalid request body", err)
@@ -70,7 +75,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteErr(w, http.StatusBadRequest, "A node name must be provided", nil)
 		return
 	}
-	if err := h.store.UpdateNode(&node); err != nil {
+	if err := h.store.UpdateNode(ctx, &node); err != nil {
 		log.Printf("Failed to update node: %v", err)
 		httpx.WriteErr(w, http.StatusInternalServerError, "Failed to update node", err)
 		return
@@ -79,8 +84,10 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	name := r.PathValue("name")
-	if err := h.store.DeleteNode(name); err != nil {
+	if err := h.store.DeleteNode(ctx, name); err != nil {
 		log.Printf("Error deleting node %s: %v", name, err)
 		if errors.Is(err, store.ErrNodeNotExist) {
 			httpx.WriteErr(w, http.StatusNotFound, "Node not found for deletion", err)
@@ -94,7 +101,9 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	nodes, err := h.store.ListNodes()
+	ctx := r.Context()
+
+	nodes, err := h.store.ListNodes(ctx)
 	if err != nil {
 		httpx.WriteErr(w, http.StatusInternalServerError, "Unable to list nodes", err)
 		return
