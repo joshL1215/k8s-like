@@ -1,6 +1,7 @@
 package distribkv
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -12,13 +13,20 @@ type DistributedKVStore struct {
 }
 
 func CreateDistributedKVStore() *DistributedKVStore {
+	endpoint := "localhost:2379"
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{"localhost:8080"},
+		Endpoints:   []string{endpoint},
 		DialTimeout: 5 * time.Second,
 	})
 
 	if err != nil {
-		log.Fatalf("Failed to connect: %v", err)
+		log.Fatalf("Failed to create etcd client: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := cli.Status(ctx, endpoint); err != nil {
+		log.Fatalf("Failed to connect to etcd at %s: %v", endpoint, err)
 	}
 
 	log.Print("Successfully connected to etcd.")

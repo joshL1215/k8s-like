@@ -40,10 +40,11 @@ func (s *APIServer) Serve(port string) {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	log.Println("Serving API server...")
+	log.Println("Serving API server at port " + port)
 	if err := s.server.ListenAndServe(); err != nil {
 		log.Printf("Could not serve API server: %v", err)
 	}
+
 }
 
 func (s *APIServer) registerRoutes() {
