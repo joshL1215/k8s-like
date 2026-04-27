@@ -12,21 +12,20 @@ type DistributedKVStore struct {
 	etcd *clientv3.Client
 }
 
-func CreateDistributedKVStore() *DistributedKVStore {
-	endpoint := "localhost:2379"
+func CreateDistributedKVStore(endpoints []string, dialTimeout time.Duration) *DistributedKVStore {
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{endpoint},
-		DialTimeout: 5 * time.Second,
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
 	})
 
 	if err != nil {
 		log.Fatalf("Failed to create etcd client: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
-	if _, err := cli.Status(ctx, endpoint); err != nil {
-		log.Fatalf("Failed to connect to etcd at %s: %v", endpoint, err)
+	if _, err := cli.Status(ctx, endpoints[0]); err != nil {
+		log.Fatalf("Failed to connect to etcd at %s: %v", endpoints[0], err)
 	}
 
 	log.Print("Successfully connected to etcd.")

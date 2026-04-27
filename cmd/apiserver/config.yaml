@@ -1,0 +1,10 @@
+etcd:
+  endpoints:
+    - http://127.0.0.1:2379
+  dial_timeout: 5s
+  username: ""
+  password: ""
+  tls:
+    cert_file: ""
+    key_file: ""
+    ca_file: ""
