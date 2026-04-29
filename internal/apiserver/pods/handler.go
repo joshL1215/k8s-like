@@ -121,10 +121,23 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	namespace := r.PathValue("namespace")
-	nodes, err := h.store.ListPods(ctx, namespace)
+	nodeName := r.URL.Query().Get("nodeName")
+	pods, err := h.store.ListPods(ctx, namespace)
 	if err != nil {
 		httpx.WriteErr(w, http.StatusInternalServerError, "Unable to list pods in namespace "+namespace, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, nodes)
+
+	if nodeName != "" {
+		var filteredPods []*corev1.Pod
+		for _, pod := range pods {
+			if pod.NodeName == nodeName {
+				filteredPods = append(filteredPods, pod)
+			}
+		}
+		httpx.WriteJSON(w, http.StatusOK, filteredPods)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, pods)
 }
