@@ -122,6 +122,8 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 
 	namespace := r.PathValue("namespace")
 	nodeName := r.URL.Query().Get("nodeName")
+	//watch := r.URL.Query().Get("watch")
+
 	pods, err := h.store.ListPods(ctx, namespace)
 	if err != nil {
 		httpx.WriteErr(w, http.StatusInternalServerError, "Unable to list pods in namespace "+namespace, err)

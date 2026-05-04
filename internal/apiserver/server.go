@@ -24,7 +24,7 @@ func CreateAPIServer(s store.StoreInterface) *APIServer {
 	apiServer := &APIServer{
 		router:       mux,
 		store:        s,
-		watchManager: *NewWatchManager(),
+		watchManager: watchers.NewWatchManager(),
 	}
 
 	apiServer.registerRoutes()
