@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/joshL1215/k8s-like/internal/apiserver/nodes"
+	"github.com/joshL1215/k8s-like/internal/apiserver/pods"
 	"github.com/joshL1215/k8s-like/internal/apiserver/watchers"
 	"github.com/joshL1215/k8s-like/internal/store"
 )
@@ -50,4 +51,8 @@ func (s *APIServer) Serve(port string) {
 func (s *APIServer) registerRoutes() {
 	nodeHandler := nodes.NewHandler(s.store)
 	nodeHandler.Register(s.router)
+
+	podHandler := pods.NewHandler(s.store)
+	podHandler.Register(s.router)
+
 }
