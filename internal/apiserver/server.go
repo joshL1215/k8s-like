@@ -52,7 +52,6 @@ func (s *APIServer) registerRoutes() {
 	nodeHandler := nodes.NewHandler(s.store)
 	nodeHandler.Register(s.router)
 
-	podHandler := pods.NewHandler(s.store)
+	podHandler := pods.NewHandler(s.store, s.watchManager)
 	podHandler.Register(s.router)
-
 }

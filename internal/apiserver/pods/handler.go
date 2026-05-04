@@ -8,15 +8,17 @@ import (
 
 	corev1 "github.com/joshL1215/k8s-like/api/core/v1"
 	"github.com/joshL1215/k8s-like/internal/apiserver/httpx"
+	"github.com/joshL1215/k8s-like/internal/apiserver/watchers"
 	"github.com/joshL1215/k8s-like/internal/store"
 )
 
 type Handler struct {
-	store store.StoreInterface
+	store        store.StoreInterface
+	watchManager *watchers.WatchManager
 }
 
-func NewHandler(s store.StoreInterface) *Handler {
-	return &Handler{store: s}
+func NewHandler(s store.StoreInterface, wm *watchers.WatchManager) *Handler {
+	return &Handler{store: s, watchManager: wm}
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +39,8 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	if pod.Status == "" {
 		pod.Status = corev1.PodPending
 	}
-	if err := h.store.CreatePod(ctx, &pod); err != nil {
+	storedPod, err := h.store.CreatePod(ctx, &pod)
+	if err != nil {
 		log.Printf("Error creating pod %s: %v", pod.Name, err)
 		if errors.Is(err, store.ErrPodExists) {
 			httpx.WriteErr(w, http.StatusConflict, "Failed to create pod", err)
@@ -47,7 +50,15 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("Created pod %s successfully", pod.Name)
-	httpx.WriteJSON(w, http.StatusCreated, pod)
+
+	event := corev1.WatchEvent{
+		EventType:  corev1.AddEvent,
+		ObjectType: "POD",
+		Pod:        storedPod,
+	}
+	h.watchManager.Publish(event)
+
+	httpx.WriteJSON(w, http.StatusCreated, storedPod)
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
@@ -91,12 +102,21 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if err := h.store.UpdatePod(ctx, &pod); err != nil {
+	storedPod, err := h.store.UpdatePod(ctx, &pod)
+	if err != nil {
 		log.Printf("Failed to update pod: %v", err)
 		httpx.WriteErr(w, http.StatusInternalServerError, "Failed to update pod", err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, pod)
+
+	event := corev1.WatchEvent{
+		EventType:  corev1.ModificationEvent,
+		ObjectType: "POD",
+		Pod:        storedPod,
+	}
+	h.watchManager.Publish(event)
+
+	httpx.WriteJSON(w, http.StatusOK, storedPod)
 }
 
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
@@ -104,6 +124,13 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 
 	namespace := r.PathValue("namespace")
 	name := r.PathValue("name")
+
+	storedPod, err := h.store.GetPod(ctx, namespace, name)
+	if err != nil {
+		httpx.WriteErr(w, http.StatusNotFound, "Pod not found", err)
+		return
+	}
+
 	if err := h.store.DeletePod(ctx, namespace, name); err != nil {
 		log.Printf("Error deleting pod %s: %v", name, err)
 		if errors.Is(err, store.ErrPodNotExist) {
@@ -114,7 +141,14 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("Pod %s successfully deleted", name)
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"message": "Pod " + name + "in namespace " + namespace + " successfully deleted"})
+
+	event := corev1.WatchEvent{
+		EventType:  corev1.DeletionEvent,
+		ObjectType: "POD",
+		Pod:        storedPod,
+	}
+	h.watchManager.Publish(event)
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"message": "Pod " + name + " in namespace " + namespace + " successfully deleted"})
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {

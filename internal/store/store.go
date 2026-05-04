@@ -16,9 +16,9 @@ var ErrPodIsDeleting = errors.New("pod is already being deleted")
 
 // Defines an agnostic store interface
 type StoreInterface interface {
-	CreatePod(ctx context.Context, pod *corev1.Pod) error
+	CreatePod(ctx context.Context, pod *corev1.Pod) (*corev1.Pod, error)
 	GetPod(ctx context.Context, namespace, name string) (*corev1.Pod, error)
-	UpdatePod(ctx context.Context, pod *corev1.Pod) error
+	UpdatePod(ctx context.Context, pod *corev1.Pod) (*corev1.Pod, error)
 	DeletePod(ctx context.Context, namespace, name string) error
 	ListPods(ctx context.Context, namespace string) ([]*corev1.Pod, error)
 

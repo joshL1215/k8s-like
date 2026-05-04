@@ -39,7 +39,7 @@ type Node struct {
 
 // Events
 type EventType string
-type EventObject string
+type ObjectType string
 
 const (
 	AddEvent          EventType = "ADDED"
@@ -48,8 +48,8 @@ const (
 )
 
 type WatchEvent struct {
-	EventType   EventType   `json:"eventType"`
-	EventObject EventObject `json:"objectType"`
-	Pod         *Pod        `json:"pod,omitempty"`
-	Node        *Node       `json:"node,omitempty"`
+	EventType  EventType  `json:"eventType"`
+	ObjectType ObjectType `json:"objectType"`
+	Pod        *Pod       `json:"pod,omitempty"`
+	Node       *Node      `json:"node,omitempty"`
 }
