@@ -156,7 +156,11 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 
 	namespace := r.PathValue("namespace")
 	nodeName := r.URL.Query().Get("nodeName")
-	//watch := r.URL.Query().Get("watch")
+
+	if r.URL.Query().Get("watch") == "true" {
+		h.watch(w, r, namespace, nodeName)
+		return
+	}
 
 	pods, err := h.store.ListPods(ctx, namespace)
 	if err != nil {
@@ -176,4 +180,51 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, pods)
+}
+
+func (h *Handler) watch(w http.ResponseWriter, r *http.Request, namespace, nodeName string) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		httpx.WriteErr(w, http.StatusInternalServerError, "Streaming unsupported", nil)
+		return
+	}
+
+	filter := func(e corev1.WatchEvent) bool {
+		if e.ObjectType != "POD" || e.Pod == nil {
+			return false
+		}
+		if namespace != "" && e.Pod.Namespace != namespace {
+			return false
+		}
+		if nodeName != "" && e.Pod.NodeName != nodeName {
+			return false
+		}
+		return true
+	}
+
+	ch, unsubscribe := h.watchManager.Subscribe(filter)
+	defer unsubscribe()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
+
+	enc := json.NewEncoder(w)
+	ctx := r.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event, ok := <-ch:
+			if !ok {
+				return
+			}
+			if err := enc.Encode(event); err != nil {
+				log.Printf("watch encode: %v", err)
+				return
+			}
+			flusher.Flush()
+		}
+	}
 }
