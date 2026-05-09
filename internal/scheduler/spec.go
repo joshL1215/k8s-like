@@ -1,3 +1,5 @@
+package scheduler
+
 //internal/
 // queue/         # pending pods waiting to be scheduled
 // cache/         # node + pod snapshot for scoring

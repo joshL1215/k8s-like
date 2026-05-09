@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"text/tabwriter"
 
@@ -29,16 +30,16 @@ var getCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return printResource(kind, name == "", data)
+		return printResource(os.Stdout, kind, name == "", data)
 	},
 }
 
-func printResource(kind string, list bool, data []byte) error {
+func printResource(out io.Writer, kind string, list bool, data []byte) error {
 	path, _, err := resourcePath(kind)
 	if err != nil {
 		return err
 	}
-	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	tw := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 	defer tw.Flush()
 
 	switch path {

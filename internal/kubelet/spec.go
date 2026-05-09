@@ -1,3 +1,5 @@
+package kubelet
+
 //internal/
 //  node/          # node registration + heartbeat
 //  podmanager/    # local cache of assigned pods (desired state)

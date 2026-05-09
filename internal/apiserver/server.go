@@ -48,6 +48,10 @@ func (s *APIServer) Serve(port string) {
 	}
 }
 
+func (s *APIServer) Handler() http.Handler {
+	return s.router
+}
+
 func (s *APIServer) registerRoutes() {
 	nodeHandler := nodes.NewHandler(s.store)
 	nodeHandler.Register(s.router)

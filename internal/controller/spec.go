@@ -1,3 +1,5 @@
+package controller
+
 //internal/
 //─ controllers/
 //  ├── deployment/
