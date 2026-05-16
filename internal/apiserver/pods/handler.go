@@ -33,9 +33,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteErr(w, http.StatusBadRequest, "A pod name must be provided", nil)
 		return
 	}
-	if pod.Namespace == "" {
-		pod.Namespace = "default"
-	}
+	pod.Namespace = r.PathValue("namespace")
 	if pod.Status == "" {
 		pod.Status = corev1.PodPending
 	}
@@ -80,21 +78,18 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	namespace := r.PathValue("namespace")
+	name := r.PathValue("name")
 
 	var pod corev1.Pod
 	if err := json.NewDecoder(r.Body).Decode(&pod); err != nil {
 		httpx.WriteErr(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
-	if pod.Namespace == "" {
-		httpx.WriteErr(w, http.StatusBadRequest, "A namespace must be provided", nil)
-		return
-	}
-	if pod.Name == "" {
-		httpx.WriteErr(w, http.StatusBadRequest, "A pod name must be provided", nil)
-		return
-	}
-	if _, err := h.store.GetPod(ctx, pod.Namespace, pod.Name); err != nil {
+	pod.Namespace = namespace
+	pod.Name = name
+
+	if _, err := h.store.GetPod(ctx, namespace, name); err != nil {
 		if errors.Is(err, store.ErrPodNotExist) {
 			httpx.WriteErr(w, http.StatusNotFound, "Pod does not exist", err)
 		} else {
