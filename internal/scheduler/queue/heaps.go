@@ -1,4 +1,4 @@
-package pqueue
+package queue
 
 import (
 	"time"
@@ -7,6 +7,7 @@ import (
 )
 
 type podHeapItem struct {
+	key      string
 	pod      corev1.Pod
 	priority int
 	attempts int
@@ -24,7 +25,10 @@ func (h ActiveHeap) Less(i, j int) bool {
 	if h[i].priority != h[j].priority {
 		return h[i].priority > h[j].priority
 	}
-	return h[i].pushedAt.Before(h[j].pushedAt)
+	if !h[i].pushedAt.Equal(h[j].pushedAt) {
+		return h[i].pushedAt.Before(h[j].pushedAt)
+	}
+	return h[i].key < h[j].key
 }
 
 func (h *ActiveHeap) Pop() any {
