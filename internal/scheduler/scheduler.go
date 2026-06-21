@@ -40,7 +40,26 @@ func New(client SchedulerClient, namespace string) *Scheduler {
 }
 
 func (s *Scheduler) Run(ctx context.Context) error {
-	return s.watchPods(ctx)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 2)
+
+	go func() {
+		errCh <- s.watchPods(ctx)
+	}()
+
+	go func() {
+		errCh <- s.bindPods(ctx)
+	}()
+
+	err := <-errCh
+	cancel()
+
+	if errors.Is(err, context.Canceled) {
+		return nil
+	}
+	return err
 }
 
 func shouldEnqueue(event corev1.WatchEvent) bool {
@@ -78,17 +97,28 @@ func (s *Scheduler) watchPods(ctx context.Context) error {
 	}
 }
 
-func (s *Scheduler) bind(ctx context.Context, pod *corev1.Pod, node *corev1.Node) error {
+func (s *Scheduler) bindPods(ctx context.Context) error {
 	if s == nil || s.client == nil {
 		return errors.New("scheduler requires an api client")
 	}
 
-	if pod.Status != corev1.PodPending {
-		return fmt.Errorf("%s is not pending, dropping pod", pod.Name)
-	}
+	for {
+		pod, err := s.queue.Pop(ctx) // queue.Pop() uses goroutine synced with ready pods on queue
+		if err != nil {
+			return fmt.Errorf("failed to pop pod %w", err)
+		}
+		if pod.Status != "" && pod.Status != corev1.PodPending {
+			continue
+		}
 
-	pod.NodeName = node.Name
-	pod.Status = corev1.PodScheduled
-	_, err := s.client.UpdatePod(ctx, pod)
-	return err
+		//NodeList := s.client.ListNodes(ctx)
+		// implement policy calls here
+
+		//pod.NodeName = node.Name
+		//pod.Status = corev1.PodScheduled
+		//_, err := s.client.UpdatePod(ctx, pod)
+		//return err
+
+		return nil
+	}
 }
