@@ -40,25 +40,53 @@ func New(client SchedulerClient, namespace string) *Scheduler {
 }
 
 func (s *Scheduler) Run(ctx context.Context) error {
-	// TODO: enqueue and schedule loop with policy
-	return nil
+	return s.watchPods(ctx)
 }
 
-func (s *Scheduler) NextPod(ctx context.Context) (*corev1.Pod, error) {
-	if s == nil || s.queue == nil {
-		return nil, errors.New("scheduler queue is not initialized")
+func shouldEnqueue(event corev1.WatchEvent) bool {
+	if event.ObjectType != "POD" || event.EventType == corev1.DeletionEvent {
+		return false
 	}
-	return s.queue.Pop(ctx)
+	if event.Pod == nil || event.Pod.NodeName != "" || event.Pod.DeletionTimestamp != nil {
+		return false
+	}
+	return event.Pod.Status == "" || event.Pod.Status == corev1.PodPending
 }
 
-func (s *Scheduler) QueueLen() int {
-	if s == nil || s.queue == nil {
-		return 0
+func (s *Scheduler) watchPods(ctx context.Context) error {
+	if s == nil || s.client == nil {
+		return errors.New("scheduler requires an api client")
 	}
-	return s.queue.Len()
+
+	events, err := s.client.WatchPods(ctx, s.namespace, "")
+	if err != nil {
+		return fmt.Errorf("watch pods: %w", err)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case event, ok := <-events:
+			if !ok {
+				return nil
+			}
+			if shouldEnqueue(event) {
+				s.queue.Enqueue(event.Pod)
+			}
+		}
+	}
 }
 
 func (s *Scheduler) bind(ctx context.Context, pod *corev1.Pod, node *corev1.Node) error {
+	if s == nil || s.client == nil {
+		return errors.New("scheduler requires an api client")
+	}
+
+	if pod.Status != corev1.PodPending {
+		return fmt.Errorf("%s is not pending, dropping pod", pod.Name)
+	}
+
 	pod.NodeName = node.Name
 	pod.Status = corev1.PodScheduled
 	_, err := s.client.UpdatePod(ctx, pod)

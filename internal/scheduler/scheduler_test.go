@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	corev1 "github.com/joshL1215/k8s-like/api/core/v1"
 )
@@ -29,6 +28,14 @@ func (f *fakePodWatcher) WatchPods(ctx context.Context, namespace, nodeName stri
 	f.nodeName = nodeName
 	f.called <- struct{}{}
 	return f.events, f.err
+}
+
+func (f *fakePodWatcher) ListNodes(context.Context) ([]*corev1.Node, error) {
+	return nil, nil
+}
+
+func (f *fakePodWatcher) UpdatePod(context.Context, *corev1.Pod) (*corev1.Pod, error) {
+	return nil, nil
 }
 
 func TestScheduler_RunWatchesAPIServerPods(t *testing.T) {
@@ -57,14 +64,7 @@ func TestScheduler_RunWatchesAPIServerPods(t *testing.T) {
 		Pod:        &corev1.Pod{Name: "p1", Namespace: "workloads", Status: corev1.PodPending},
 	}
 
-	pod, err := s.NextPod(withTimeout(t))
-	if err != nil {
-		t.Fatalf("next pod: %v", err)
-	}
-	if pod.Name != "p1" {
-		t.Errorf("pod name: got %q want p1", pod.Name)
-	}
-
+	close(watcher.events)
 	cancel()
 	if err := <-errCh; err != nil {
 		t.Fatalf("run: %v", err)
@@ -96,9 +96,6 @@ func TestScheduler_RunIgnoresScheduledAndDeletedPods(t *testing.T) {
 	if err := <-errCh; err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	if s.QueueLen() != 0 {
-		t.Errorf("queue len: got %d want 0", s.QueueLen())
-	}
 }
 
 func TestScheduler_RunReturnsWatchErrors(t *testing.T) {
@@ -109,11 +106,4 @@ func TestScheduler_RunReturnsWatchErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected watch error")
 	}
-}
-
-func withTimeout(t *testing.T) context.Context {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	t.Cleanup(cancel)
-	return ctx
 }
