@@ -2,6 +2,7 @@ package v1
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -61,6 +62,20 @@ func TestNode_JSONRoundTrip(t *testing.T) {
 		Name:    "node-1",
 		Address: "10.0.0.1",
 		Status:  NodeReady,
+		Metrics: &NodeMetrics{
+			CPUUsagePercent:  73.5,
+			MemoryUsedBytes:  8 << 30,
+			MemoryTotalBytes: 16 << 30,
+			DiskUsedBytes:    120 << 30,
+			DiskTotalBytes:   256 << 30,
+			NetworkRxBytes:   1024,
+			NetworkTxBytes:   2048,
+			PodCount:         42,
+			RunningProcesses: 314,
+			LoadAverage1Min:  1.25,
+			LoadAverage5Min:  1.10,
+			LoadAverage15Min: 0.95,
+		},
 	}
 
 	data, err := json.Marshal(original)
@@ -69,6 +84,53 @@ func TestNode_JSONRoundTrip(t *testing.T) {
 	}
 
 	var got Node
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !reflect.DeepEqual(got, original) {
+		t.Errorf("got %+v want %+v", got, original)
+	}
+}
+
+func TestNode_OmitsMetricsWhenEmpty(t *testing.T) {
+	node := Node{Name: "node-1", Address: "10.0.0.1", Status: NodeReady}
+
+	data, err := json.Marshal(node)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if _, ok := m["metrics"]; ok {
+		t.Error("expected metrics to be omitted when empty")
+	}
+}
+
+func TestNodeMetrics_JSONRoundTrip(t *testing.T) {
+	original := NodeMetrics{
+		CPUUsagePercent:  87.2,
+		MemoryUsedBytes:  12 << 30,
+		MemoryTotalBytes: 32 << 30,
+		DiskUsedBytes:    180 << 30,
+		DiskTotalBytes:   512 << 30,
+		NetworkRxBytes:   4096,
+		NetworkTxBytes:   8192,
+		PodCount:         128,
+		RunningProcesses: 512,
+		LoadAverage1Min:  3.5,
+		LoadAverage5Min:  2.75,
+		LoadAverage15Min: 1.95,
+	}
+
+	data, err := json.Marshal(original)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var got NodeMetrics
 	if err := json.Unmarshal(data, &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}

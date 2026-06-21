@@ -31,10 +31,26 @@ const (
 	NodeNotReady NodeStatus = "NotReady"
 )
 
+type NodeMetrics struct {
+	CPUUsagePercent  float64 `json:"cpuUsagePercent"`
+	MemoryUsedBytes  int64   `json:"memoryUsedBytes"`
+	MemoryTotalBytes int64   `json:"memoryTotalBytes"`
+	DiskUsedBytes    int64   `json:"diskUsedBytes"`
+	DiskTotalBytes   int64   `json:"diskTotalBytes"`
+	NetworkRxBytes   int64   `json:"networkRxBytes"`
+	NetworkTxBytes   int64   `json:"networkTxBytes"`
+	PodCount         int     `json:"podCount"`
+	RunningProcesses int     `json:"runningProcesses"`
+	LoadAverage1Min  float64 `json:"loadAverage1Min"`
+	LoadAverage5Min  float64 `json:"loadAverage5Min"`
+	LoadAverage15Min float64 `json:"loadAverage15Min"`
+}
+
 type Node struct {
-	Name    string     `json:"name"`
-	Address string     `json:"address"`
-	Status  NodeStatus `json:"status"`
+	Name    string       `json:"name"`
+	Address string       `json:"address"`
+	Status  NodeStatus   `json:"status"`
+	Metrics *NodeMetrics `json:"metrics,omitempty"`
 }
 
 // Events
