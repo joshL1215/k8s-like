@@ -12,7 +12,9 @@ func TestPod_JSONRoundTrip(t *testing.T) {
 	original := Pod{
 		Name:              "test-pod",
 		Namespace:         "default",
+		Labels:            map[string]string{"app": "nginx", "tier": "frontend"},
 		Image:             "nginx:latest",
+		Resources:         Resources{CPU: 1.5, Memory: 512 << 20, Disk: 10 << 30},
 		NodeName:          "node-1",
 		Status:            PodRunning,
 		DeletionTimestamp: &now,
@@ -34,6 +36,12 @@ func TestPod_JSONRoundTrip(t *testing.T) {
 	if got.Status != original.Status {
 		t.Errorf("Status: got %q want %q", got.Status, original.Status)
 	}
+	if !reflect.DeepEqual(got.Labels, original.Labels) {
+		t.Errorf("Labels: got %+v want %+v", got.Labels, original.Labels)
+	}
+	if got.Resources != original.Resources {
+		t.Errorf("Resources: got %+v want %+v", got.Resources, original.Resources)
+	}
 	if got.DeletionTimestamp == nil || !got.DeletionTimestamp.Equal(now) {
 		t.Errorf("DeletionTimestamp: got %v want %v", got.DeletionTimestamp, now)
 	}
@@ -52,6 +60,9 @@ func TestPod_OmitsNodeNameWhenEmpty(t *testing.T) {
 	if _, ok := m["nodeName"]; ok {
 		t.Error("expected nodeName to be omitted when empty")
 	}
+	if _, ok := m["labels"]; ok {
+		t.Error("expected labels to be omitted when empty")
+	}
 	if _, ok := m["deleteTime"]; ok {
 		t.Error("expected deleteTime to be omitted when nil")
 	}
@@ -59,11 +70,14 @@ func TestPod_OmitsNodeNameWhenEmpty(t *testing.T) {
 
 func TestNode_JSONRoundTrip(t *testing.T) {
 	original := Node{
-		Name:    "node-1",
-		Address: "10.0.0.1",
-		Status:  NodeReady,
+		Name:             "node-1",
+		AllowedLabels:    map[string]string{"workload": "frontend", "tier": "api"},
+		DisallowedLabels: map[string]string{"workload": "batch", "disk": "slow"},
+		Address:          "10.0.0.1",
+		Status:           NodeReady,
 		Metrics: &NodeMetrics{
-			CPUUsagePercent:  73.5,
+			CPUOccupiedCores: 2.5,
+			CPUTotalCores:    8,
 			MemoryUsedBytes:  8 << 30,
 			MemoryTotalBytes: 16 << 30,
 			DiskUsedBytes:    120 << 30,
@@ -107,11 +121,18 @@ func TestNode_OmitsMetricsWhenEmpty(t *testing.T) {
 	if _, ok := m["metrics"]; ok {
 		t.Error("expected metrics to be omitted when empty")
 	}
+	if _, ok := m["allowedLabels"]; ok {
+		t.Error("expected allowedLabels to be omitted when empty")
+	}
+	if _, ok := m["disallowedLabels"]; ok {
+		t.Error("expected disallowedLabels to be omitted when empty")
+	}
 }
 
 func TestNodeMetrics_JSONRoundTrip(t *testing.T) {
 	original := NodeMetrics{
-		CPUUsagePercent:  87.2,
+		CPUOccupiedCores: 3.5,
+		CPUTotalCores:    12,
 		MemoryUsedBytes:  12 << 30,
 		MemoryTotalBytes: 32 << 30,
 		DiskUsedBytes:    180 << 30,
