@@ -94,7 +94,6 @@ func TestRunRegistersNodeSeedsPodsAndWatchesAssignedPods(t *testing.T) {
 	}
 	runtime := &recordingRuntime{}
 	k := New(client, &corev1.Node{Name: "node-1", Address: "127.0.0.1"}, runtime, "default")
-	k.SetHeartbeatInterval(time.Hour)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	errCh := make(chan error, 1)
@@ -121,7 +120,6 @@ func TestRunReconcilesWatchEvents(t *testing.T) {
 	client := newFakeClient()
 	runtime := &recordingRuntime{}
 	k := New(client, &corev1.Node{Name: "node-1"}, runtime, "default")
-	k.SetHeartbeatInterval(time.Hour)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	errCh := make(chan error, 1)

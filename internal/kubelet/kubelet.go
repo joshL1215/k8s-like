@@ -32,14 +32,9 @@ type Runtime interface {
 	PodStatus(ctx context.Context, pod *corev1.Pod) (corev1.PodStatus, error)
 }
 
-type MetricsProvider interface {
-	Metrics(ctx context.Context) (*corev1.NodeMetrics, error)
-}
-
 type Kubelet struct {
 	client            KubeletClient
 	runtime           Runtime
-	metrics           MetricsProvider
 	cache             *podcache.Cache
 	node              *corev1.Node
 	namespace         string
@@ -61,16 +56,6 @@ func New(client KubeletClient, node *corev1.Node, runtime Runtime, namespace str
 		node:              cloneNode(node),
 		namespace:         namespace,
 		heartbeatInterval: defaultHeartbeatInterval,
-	}
-}
-
-func (k *Kubelet) SetMetricsProvider(metrics MetricsProvider) {
-	k.metrics = metrics
-}
-
-func (k *Kubelet) SetHeartbeatInterval(interval time.Duration) {
-	if interval > 0 {
-		k.heartbeatInterval = interval
 	}
 }
 
@@ -120,11 +105,7 @@ func (k *Kubelet) validate() error {
 func (k *Kubelet) registerNode(ctx context.Context) error {
 	node := cloneNode(k.node)
 	node.Status = corev1.NodeReady
-	metrics, err := k.currentMetrics(ctx)
-	if err != nil {
-		return fmt.Errorf("collect node metrics: %w", err)
-	}
-	node.Metrics = metrics
+	node.Metrics = k.currentMetrics()
 
 	created, err := k.client.CreateNode(ctx, node)
 	if err == nil {
@@ -188,11 +169,7 @@ func (k *Kubelet) updateNodeStatus(ctx context.Context, status corev1.NodeStatus
 	node := cloneNode(k.node)
 	node.Status = status
 
-	metrics, err := k.currentMetrics(ctx)
-	if err != nil {
-		return fmt.Errorf("collect node metrics: %w", err)
-	}
-	node.Metrics = metrics
+	node.Metrics = k.currentMetrics()
 
 	updated, err := k.client.UpdateNode(ctx, node)
 	if err != nil {
@@ -202,16 +179,13 @@ func (k *Kubelet) updateNodeStatus(ctx context.Context, status corev1.NodeStatus
 	return nil
 }
 
-func (k *Kubelet) currentMetrics(ctx context.Context) (*corev1.NodeMetrics, error) {
-	if k.metrics != nil {
-		return k.metrics.Metrics(ctx)
-	}
+func (k *Kubelet) currentMetrics() *corev1.NodeMetrics {
 	if k.node != nil && k.node.Metrics != nil {
 		metrics := *k.node.Metrics
 		metrics.PodCount = len(k.cache.List())
-		return &metrics, nil
+		return &metrics
 	}
-	return &corev1.NodeMetrics{PodCount: len(k.cache.List())}, nil
+	return &corev1.NodeMetrics{PodCount: len(k.cache.List())}
 }
 
 func (k *Kubelet) watchPods(ctx context.Context) error {
